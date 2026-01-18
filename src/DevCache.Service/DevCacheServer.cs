@@ -3,23 +3,36 @@ using System.Net.Sockets;
 
 namespace DevCache.Service;
 
-public sealed class DevCacheServer
+public sealed class DevCacheServer : IDisposable
 {
+    private readonly IConfiguration _config;
     private TcpListener? _listener;
+    private readonly InMemoryStore _store = new();
+
+    public DevCacheServer(IConfiguration config)
+    {
+        _config = config;
+        CommandRegistry.Initialize(_store);
+    }
 
     public async Task StartAsync(CancellationToken token)
     {
-        _listener = new TcpListener(IPAddress.Parse("127.0.0.1"), 6380);
+        var bind = _config["DevCache:BindAddress"] ?? "127.0.0.1";
+        var port = _config.GetValue<int>("DevCache:Port", 6380);
+
+        _listener = new TcpListener(IPAddress.Parse(bind), port);
         _listener.Start();
+
+        Console.WriteLine("DevCache listening on 127.0.0.1:6380");
 
         while (!token.IsCancellationRequested)
         {
             var client = await _listener.AcceptTcpClientAsync(token);
-            await HandleClientAsync(client);
+            _ = HandleClientAsync(client, token);   // pass token if you want to propagate
         }
     }
 
-    private async Task HandleClientAsync(TcpClient client)
+    private async Task HandleClientAsync(TcpClient client, CancellationToken token)
     {
         using var stream = client.GetStream();
 
@@ -90,5 +103,11 @@ public sealed class DevCacheServer
         {
             client.Close();
         }
+    }
+
+    public void Dispose()
+    {
+        _listener?.Stop();
+        _store.Dispose();
     }
 }

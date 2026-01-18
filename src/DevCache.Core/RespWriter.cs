@@ -28,7 +28,7 @@ public sealed class RespWriter
                 await WriteAsync(stream, $":{value.Value}\r\n", ct);
                 break;
 
-            case RespType.BulkString:
+            case RespType.Bulk:
                 var str = (string)value.Value!;
                 await WriteAsync(stream, $"${Encoding.UTF8.GetByteCount(str)}\r\n{str}\r\n", ct);
                 break;

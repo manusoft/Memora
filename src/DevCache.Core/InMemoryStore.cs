@@ -1,9 +1,17 @@
 ﻿using System.Collections.Concurrent;
+using System.Diagnostics;
+using System.Text;
 
 namespace DevCache;
 
-public sealed class InMemoryStore
+public sealed class InMemoryStore : IDisposable
 {
+    private readonly ConcurrentDictionary<string, ValueEntry> _data =
+       new(StringComparer.OrdinalIgnoreCase);
+
+    private readonly CancellationTokenSource _cts = new();
+    private readonly Task _expiryTask;
+
     private sealed class ValueEntry
     {
         public string Value = default!;
@@ -19,20 +27,47 @@ public sealed class InMemoryStore
         }
     }
 
-    private readonly ConcurrentDictionary<string, ValueEntry> _data =
-        new(StringComparer.OrdinalIgnoreCase);
+    private readonly string _aofPath;
+    private StreamWriter? _aofWriter;
+    private readonly object _aofLock = new();
 
     public InMemoryStore()
     {
-        // Background cleanup task
-        Task.Run(async () =>
+        _aofPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "DevCache", "devcache.aof");
+
+        try
         {
-            while (true)
+            // Ensure directory exists
+            Directory.CreateDirectory(Path.GetDirectoryName(_aofPath)!);
+
+            _aofWriter = new StreamWriter(_aofPath, true, Encoding.UTF8)
+            {
+                AutoFlush = true
+            };
+
+            //// Optional: write startup marker
+            _aofWriter.WriteLine("# DevCache AOF started at " + DateTime.Now.ToString("o"));
+            _aofWriter.Flush();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[AOF INIT ERROR] Cannot open AOF file: {ex.Message}");
+            _aofWriter = null; // or throw if you want to fail fast
+        }
+
+        // Load from AOF if exists
+        //LoadAof();
+
+        _expiryTask = Task.Run(async () =>
+        {
+            while (!_cts.Token.IsCancellationRequested)
             {
                 try
                 {
                     var now = DateTime.UtcNow;
-                    foreach (var kvp in _data)
+
+                    // Use .ToArray() or .ToList() to take a safe snapshot
+                    foreach (var kvp in _data.ToArray())
                     {
                         if (kvp.Value.ExpiryUtc.HasValue &&
                             kvp.Value.ExpiryUtc.Value <= now)
@@ -41,13 +76,106 @@ public sealed class InMemoryStore
                         }
                     }
                 }
-                catch { /* ignore */ }
+                catch (Exception ex)
+                {
+                    // At minimum log to console for now
+                    // Later: inject ILogger and use proper logging
+                    Console.Error.WriteLine($"[ExpiryTask] Error during cleanup: {ex.Message}");
+                    // Optional: add small back-off if you want
+                    // await Task.Delay(5000, _cts.Token);
+                }
 
-                await Task.Delay(1000);
+                try
+                {
+                    await Task.Delay(1000, _cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    // Normal shutdown
+                    break;
+                }
             }
-        });
+        }, _cts.Token);
     }
 
+    private void LoadAof()
+    {
+        if (!File.Exists(_aofPath))
+        {
+            Debug.WriteLine("[AOF] No file found - starting fresh");
+            return;
+        }
+
+        Debug.WriteLine($"[AOF] Loading from: {_aofPath}");
+
+        try
+        {
+            using var reader = new StreamReader(_aofPath);
+            string? line;
+            int count = 0;
+
+            while ((line = reader.ReadLine()) != null)
+            {
+                if (string.IsNullOrWhiteSpace(line)) continue;
+
+                count++;
+
+                // Very simple parsing: assume format "SET key value" or "DEL key" or "EXPIRE key sec"
+                var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                if (parts.Length < 2) continue;
+
+                string cmd = parts[0].ToUpperInvariant();
+
+                try
+                {
+                    switch (cmd)
+                    {
+                        case "SET":
+                            if (parts.Length >= 3)
+                                Set(parts[1], string.Join(" ", parts[2..])); // naive join, no quotes handling yet
+                            break;
+
+                        case "DEL":
+                            if (parts.Length >= 2)
+                                Del(parts[1]);
+                            break;
+
+                        case "EXPIRE":
+                            if (parts.Length >= 3 && int.TryParse(parts[2], out int sec) && sec > 0)
+                                Expire(parts[1], sec);
+                            break;
+
+                            // Add more commands later (FLUSHDB, etc.)
+                    }
+                }
+                catch { /* skip broken lines */ }
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[AOF LOAD ERROR] {ex.Message}");
+        }
+        finally
+        {
+            Debug.WriteLine("AOF load finished.");
+        }
+    }
+
+    public void AppendToAof(string commandLine)
+    {
+        lock (_aofLock)
+        {
+            if (_aofWriter == null)
+            {
+                Debug.WriteLine("[AOF CRITICAL] _aofWriter is null - file cannot be written!");
+                return;
+            }
+
+            Debug.WriteLine($"[AOF APPEND] Writing: {commandLine}");
+            _aofWriter.WriteLine(commandLine);
+            _aofWriter.Flush();           // force write to disk now (good for debugging)
+        }
+    }
 
     // ---------------- Core KV ----------------
     public bool Set(string key, string value)
@@ -141,6 +269,37 @@ public sealed class InMemoryStore
             })
             .ToList()
             .AsReadOnly();
+    }
+
+    public void Dispose()
+    {
+        try
+        {
+            _cts.Cancel();
+            _cts.Dispose();
+
+            // Optional: wait for task to finish (with timeout)
+            _expiryTask.Wait(TimeSpan.FromSeconds(2));
+        }
+        catch { /* ignore during dispose */ }
+
+        lock (_aofLock)
+        {
+            if (_aofWriter != null)
+            {
+                try
+                {
+                    _aofWriter.Flush();
+                    _aofWriter.Close();           // or Dispose()
+                    _aofWriter = null;
+                    Debug.WriteLine("[AOF] Closed writer successfully");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[AOF CLOSE ERROR] {ex.Message}");
+                }
+            }
+        }
     }
 
 }

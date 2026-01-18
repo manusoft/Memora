@@ -3,7 +3,9 @@
 public static class CommandRegistry
 {
     private static readonly Dictionary<string, RedisCommand> _commands;
-    private static readonly InMemoryStore Store = new();
+    private static InMemoryStore? _store;
+    public static InMemoryStore Store => _store
+        ?? throw new InvalidOperationException("Store not initialized");
 
     public static bool TryGet(string name, out RedisCommand command)
         => _commands.TryGetValue(name, out command!);
@@ -33,6 +35,12 @@ public static class CommandRegistry
             ["KEYS"] = KeysAsync,
             ["GETMETA"] = GetMetaAsync
         };
+    }
+
+    public static void Initialize(InMemoryStore store)
+    {
+        if (_store != null) throw new InvalidOperationException("Already initialized");
+        _store = store;
     }
 
     // ---------------- Core ----------------
@@ -66,16 +74,20 @@ public static class CommandRegistry
     {
         if (args.Count != 2)
         {
-            //await Error(ctx, "ERR wrong number of arguments for 'set' command");
-            //return;
             await ctx.Writer.WriteAsync(ctx.Stream,
-           RespValue.Error("ERR wrong number of arguments for 'set' command"));
+                RespValue.Error("ERR wrong number of arguments for 'set' command"));
             return;
         }
 
-        Store.Set(args[0], args[1]);
-        //await Ok(ctx);
-        // Always flush response
+        string key = args[0];
+        string value = args[1];
+
+        // This line ensures previous expiry is cleared — critical for Redis compatibility
+        Store.Set(key, value);
+
+        // Append to AOF
+        Store.AppendToAof($"SET {EscapeForAof(key)} {EscapeForAof(value)}");
+
         await ctx.Writer.WriteAsync(ctx.Stream, RespValue.Simple("OK"));
     }
 
@@ -88,6 +100,7 @@ public static class CommandRegistry
         }
 
         var value = Store.Get(args[0]);
+
         await ctx.Writer.WriteAsync(
             ctx.Stream,
             value == null ? RespValue.Null() : RespValue.Bulk(value));
@@ -100,6 +113,9 @@ public static class CommandRegistry
             await Error(ctx, "ERR wrong number of arguments for 'del' command");
             return;
         }
+
+        int count = Store.Del(args[0]) ? 1 : 0;
+        Store.AppendToAof($"DEL {EscapeForAof(args[0])}");
 
         await ctx.Writer.WriteAsync(
             ctx.Stream,
@@ -134,6 +150,10 @@ public static class CommandRegistry
             return;
         }
 
+        bool success = Store.Expire(args[0], seconds);
+        if (success)
+            Store.AppendToAof($"EXPIRE {EscapeForAof(args[0])} {seconds}");
+
         await ctx.Writer.WriteAsync(
             ctx.Stream,
             RespValue.Integer(Store.Expire(args[0], seconds) ? 1 : 0));
@@ -162,15 +182,34 @@ public static class CommandRegistry
         }
 
         Store.FlushAll();
+        Store.AppendToAof("FLUSHDB");
         await Ok(ctx);
     }
 
     // ---------------- UI / Introspection ----------------
     private static async Task KeysAsync(CommandContext ctx, IReadOnlyList<string> args)
     {
-        if (args.Count != 0)
+        string pattern;
+
+        if (args.Count == 0)
         {
-            await Error(ctx, "ERR wrong number of arguments for 'keys' command");
+            pattern = "*";           // redis-cli default behavior: KEYS without arg = KEYS *
+        }
+        else if (args.Count == 1)
+        {
+            pattern = args[0];
+        }
+        else
+        {
+            await ctx.Writer.WriteAsync(ctx.Stream,
+                RespValue.Error("ERR wrong number of arguments for 'keys' command"));
+            return;
+        }
+
+        if (pattern != "*")
+        {
+            await ctx.Writer.WriteAsync(ctx.Stream,
+                RespValue.Error($"ERR pattern '{pattern}' not supported (only '*' allowed in this version)"));
             return;
         }
 
@@ -216,5 +255,12 @@ public static class CommandRegistry
 
     private static Task Error(CommandContext ctx, string message)
         => ctx.Writer.WriteAsync(ctx.Stream, RespValue.Error(message));
+
+    private static string EscapeForAof(string s)
+    {
+        // Very naive escaping – real Redis uses proper RESP quoting
+        // For now: replace " with \"
+        return s.Replace("\"", "\\\"").Replace("\n", "\\n");
+    }
 
 }

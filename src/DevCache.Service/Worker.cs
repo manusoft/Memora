@@ -1,19 +1,26 @@
-namespace DevCache.Service;
+﻿namespace DevCache.Service;
 
-public class Worker(ILogger<Worker> logger) : BackgroundService
+public class Worker(ILogger<Worker> logger, IConfiguration configuration) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
-        {
-            var server = new DevCacheServer();
-            await server.StartAsync(stoppingToken);
+        var server = new DevCacheServer(configuration);
 
-            if (logger.IsEnabled(LogLevel.Information))
-            {
-                logger.LogInformation("Worker running at: {time}", DateTimeOffset.Now);
-            }
-            await Task.Delay(1000, stoppingToken);
+        try
+        {
+            await server.StartAsync(stoppingToken);
+            logger.LogInformation("DevCache server stopped gracefully");
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex, "DevCache failed");
+            throw;
+        }
+        finally
+        {
+            server.Dispose();
+            Console.WriteLine("[SHUTDOWN] All resources disposed");
         }
     }
 }

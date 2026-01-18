@@ -21,7 +21,7 @@ public sealed class RespValue
         new(RespType.Integer, value);
 
     public static RespValue Bulk(string? value) =>
-        new(value == null ? RespType.Null : RespType.BulkString, value);
+        new(value == null ? RespType.Null : RespType.Bulk, value);
 
     public static RespValue Array(IReadOnlyList<RespValue> items) =>
         new RespValue(RespType.Array, items);
@@ -36,7 +36,7 @@ public enum RespType
     SimpleString,
     Error,
     Integer,
-    BulkString,
+    Bulk,
     Array,
     Null
 }
