@@ -25,7 +25,7 @@ public sealed class DevCacheServer : IDisposable
         _listener = new TcpListener(IPAddress.Parse(bind), port);
         _listener.Start();
 
-        _logger.LogInformation("DevCache listening on 127.0.0.1:6380");
+        _logger.LogInformation($"DevCache listening on {bind}:{port}");
 
         while (!token.IsCancellationRequested)
         {
