@@ -25,10 +25,10 @@ public sealed partial class MainWindow : Window
         AppWindow.Title = "DevCache Explorer";
 
         // Set the window size (including borders)
-        AppWindow.Resize(new Windows.Graphics.SizeInt32(1200, 800));
+        AppWindow.Resize(new SizeInt32(1200, 800));
 
         // Set the taskbar icon (displayed in the taskbar)
-        //AppWindow.SetIcon("Assets/Tiles/GalleryIcon.ico");
+        AppWindow.SetIcon("Assets/appicon.ico");
 
         // Set the title bar icon (displayed in the window's title bar)
         //AppWindow.SetTitleBarIcon("Assets/Tiles/GalleryIcon.ico");
