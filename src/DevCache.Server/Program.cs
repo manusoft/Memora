@@ -1,4 +1,5 @@
-﻿using DevCache;
+﻿using DevCache.Core;
+using DevCache.Shared;
 using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Net.Sockets;

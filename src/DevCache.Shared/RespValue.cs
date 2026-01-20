@@ -1,4 +1,4 @@
-﻿namespace DevCache;
+﻿namespace DevCache.Shared;
 
 public sealed class RespValue
 {

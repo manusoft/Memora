@@ -1,4 +1,6 @@
-﻿namespace DevCache;
+﻿using DevCache.Shared;
+
+namespace DevCache.Core;
 
 public static class CommandRegistry
 {

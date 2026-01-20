@@ -2,7 +2,7 @@
 using System.Diagnostics;
 using System.Text;
 
-namespace DevCache;
+namespace DevCache.Core;
 
 public sealed class InMemoryStore : IDisposable
 {
