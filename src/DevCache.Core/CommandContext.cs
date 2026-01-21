@@ -1,6 +1,7 @@
-﻿using System.Net.Sockets;
+﻿using DevCache.Shared;
+using System.Net.Sockets;
 
-namespace DevCache;
+namespace DevCache.Core;
 
 public sealed class CommandContext
 {

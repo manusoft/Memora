@@ -1,4 +1,4 @@
-﻿namespace DevCache;
+﻿namespace DevCache.Core;
 
 public sealed class CacheMeta
 {

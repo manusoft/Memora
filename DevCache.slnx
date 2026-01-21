@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="src/DevCache.Cli/DevCache.Cli.csproj" Id="4a4c5e71-74fe-48f7-9bbe-d02979351b09" />
     <Project Path="src/DevCache.Core/DevCache.Core.csproj" />
     <Project Path="src/DevCache.Server/DevCache.Server.csproj" Id="7081d44c-5e07-4605-bac2-73fbf12a0c7b" />
     <Project Path="src/DevCache.Service/DevCache.Service.csproj" Id="64191405-e5b5-4f53-b07c-373581b52cbb" />
+    <Project Path="src/DevCache.Shared/DevCache.Shared.csproj" Id="a6d5b29b-2cc1-436f-a18e-6dd782bb50c7" />
     <Project Path="src/DevCache.UI/DevCache.UI.csproj" Id="2194a7f5-6059-4bbc-92f1-efd3ddcd57e3">
       <Platform Project="x64" />
       <Deploy />

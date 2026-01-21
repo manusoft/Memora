@@ -4,7 +4,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <UserSecretsId>dotnet-DevCache.Service-7ce3fe59-d258-4b88-bd83-88d58ef3a173</UserSecretsId>
+    <UserSecretsId>Manuhub-DevCache.Service-7ce3fe59-d258-4b88-bd83-88d58ef3a173</UserSecretsId>
   </PropertyGroup>
 
   <ItemGroup>
