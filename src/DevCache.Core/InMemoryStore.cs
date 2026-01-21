@@ -228,7 +228,15 @@ public sealed class InMemoryStore : IDisposable
                     case "EXPIRE" when commandArgs.Count == 3:
                         if (int.TryParse(commandArgs[2], out int sec) && sec >= 0)
                         {
-                            Expire(commandArgs[1], sec, persist: false);
+                            Expire(commandArgs[1], sec, persist: false);  // seconds overload
+                            loaded++;
+                        }
+                        break;
+
+                    case "PEXPIRE" when commandArgs.Count == 3:
+                        if (long.TryParse(commandArgs[2], out long ms) && ms >= 0)
+                        {
+                            Expire(commandArgs[1], ms, persist: false);   // ms overload
                             loaded++;
                         }
                         break;

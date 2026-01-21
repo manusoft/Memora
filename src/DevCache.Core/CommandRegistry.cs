@@ -85,7 +85,7 @@ public static class CommandRegistry
         string key = args[0];
         string value = args[1];
 
-        bool? nx = null;  // true = NX, false = XX, null = always
+        bool? nx = null;
 
         long? expireMs = null;
 
@@ -129,23 +129,24 @@ public static class CommandRegistry
             }
         }
 
-        // NX/XX check
         bool keyExists = Store.Exists(key);
+
         if (nx == true && keyExists)
         {
             await ctx.Writer.WriteAsync(ctx.Stream, RespValue.Null());
             return;
         }
+
         if (nx == false && !keyExists)
         {
             await ctx.Writer.WriteAsync(ctx.Stream, RespValue.Null());
             return;
         }
 
-        // Set the value
+        // Set the value FIRST
         Store.Set(key, value, persist: true);
 
-        // Apply expiry
+        // Apply expiry AFTER set (so key exists)
         if (expireMs.HasValue)
         {
             Store.Expire(key, expireMs.Value, persist: true);
