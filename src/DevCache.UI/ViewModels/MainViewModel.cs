@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using DevCache.Shared;
+using DevCache.Common;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;

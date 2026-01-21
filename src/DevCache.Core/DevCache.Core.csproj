@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
 	<LangVersion>latest</LangVersion>
 	<RootNamespace>DevCache.Core</RootNamespace>
-	<AssemblyName>DevCache.Core</AssemblyName>
+	<AssemblyName>devcache-core</AssemblyName>
 	<PackageId>DevCache.Core</PackageId>
 	<PackageDescription>A lightweight Redis-compatible in-memory cache for development.</PackageDescription>
 	<Copyright>Copyright © 2026 ManuHub</Copyright>
@@ -31,7 +31,7 @@
  </ItemGroup>
 
  <ItemGroup>
-   <ProjectReference Include="..\DevCache.Shared\DevCache.Shared.csproj" />
+   <ProjectReference Include="..\DevCache.Common\DevCache.Common.csproj" />
  </ItemGroup>
 
 </Project>

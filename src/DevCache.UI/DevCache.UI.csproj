@@ -85,7 +85,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DevCache.Shared\DevCache.Shared.csproj" />
+    <ProjectReference Include="..\DevCache.Common\DevCache.Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>

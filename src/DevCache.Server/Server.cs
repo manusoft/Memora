@@ -1,18 +1,18 @@
 ﻿using DevCache.Core;
-using DevCache.Shared;
+using DevCache.Common;
 using System.Net;
 using System.Net.Sockets;
 
-namespace DevCache.Service;
+namespace DevCache.Server;
 
-public sealed class DevCacheServer : IDisposable
+public sealed class Server : IDisposable
 {
     private readonly ILogger _logger;
     private readonly IConfiguration _config;
     private TcpListener? _listener;
     private readonly InMemoryStore _store = new();
 
-    public DevCacheServer(IConfiguration config, ILogger logger)
+    public Server(IConfiguration config, ILogger logger)
     {
         _config = config;
         _logger =logger;

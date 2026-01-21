@@ -1,6 +1,6 @@
 ﻿using System.Text;
 
-namespace DevCache.Shared;
+namespace DevCache.Common;
 
 public sealed class RespReader
 {

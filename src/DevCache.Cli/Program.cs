@@ -1,5 +1,5 @@
 ﻿using DevCache.Cli.Handlers;
-using DevCache.Shared;
+using DevCache.Common;
 using System.CommandLine;
 using System.Net.Sockets;
 using System.Text;
