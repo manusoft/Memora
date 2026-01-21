@@ -47,6 +47,10 @@ public sealed class InMemoryStore : IDisposable
     private readonly Task _expiryTask;
     private Task? _rewriteTask;
 
+    private readonly Task _flushTask;
+    private readonly CancellationTokenSource _flushCts = new();
+    private volatile bool _needsFlush = false;
+
     public InMemoryStore()
     {
         _aofPath = Path.Combine(
@@ -64,6 +68,7 @@ public sealed class InMemoryStore : IDisposable
 
         _expiryTask = Task.Run(ExpiryLoop, _cts.Token);
         _rewriteTask = Task.Run(AofRewriteMonitorLoop, _cts.Token);
+        _flushTask = Task.Run(BackgroundFlushLoop, _flushCts.Token);
     }
 
     // =======================
@@ -81,7 +86,7 @@ public sealed class InMemoryStore : IDisposable
             Encoding.UTF8
         )
         {
-            AutoFlush = true
+            AutoFlush = false   // ← important: let background handle it
         };
 
         _aofWriter.WriteLine($"# DevCache AOF started {DateTime.UtcNow:o}");
@@ -256,6 +261,7 @@ public sealed class InMemoryStore : IDisposable
         Debug.WriteLine($"[AOF] Loaded {loaded} commands → {_data.Count} keys, AOF file size: {new FileInfo(_aofPath).Length} bytes");
     }
 
+
     private void AppendRespCommand(string cmdName, params string[] args)
     {
         lock (_aofLock)
@@ -271,13 +277,14 @@ public sealed class InMemoryStore : IDisposable
             foreach (var arg in args)
                 WriteBulk(_aofWriter, arg);
 
-            _aofWriter.Flush();
+            // Do NOT flush here anymore
+            _needsFlush = true;  // flag for background flusher
         }
     }
 
     private static void WriteBulk(StreamWriter writer, string s)
     {
-        var bytes = System.Text.Encoding.UTF8.GetByteCount(s);
+        var bytes = Encoding.UTF8.GetByteCount(s);
         writer.WriteLine($"${bytes}");
         writer.WriteLine(s);
     }
@@ -524,6 +531,40 @@ public sealed class InMemoryStore : IDisposable
         }
     }
 
+    private async Task BackgroundFlushLoop()
+    {
+        while (!_flushCts.IsCancellationRequested)
+        {
+            try
+            {
+                await Task.Delay(300, _flushCts.Token);
+
+                bool shouldFlush = false;
+
+                lock (_aofLock)
+                {
+                    if (_aofWriter != null && _needsFlush)
+                    {
+                        shouldFlush = true;
+                        _needsFlush = false;
+                    }
+                }
+
+                if (shouldFlush && _aofWriter != null)
+                {
+                    // Flush outside the lock — safe because _aofWriter is only disposed under lock
+                    await _aofWriter.FlushAsync();
+                    Debug.WriteLine("[AOF] Background flush completed");
+                }
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[AOF Flush] {ex.Message}");
+            }
+        }
+    }
+
     // =======================
     // Commands
     // =======================
@@ -678,14 +719,20 @@ public sealed class InMemoryStore : IDisposable
     public void Dispose()
     {
         _cts.Cancel();
+        _flushCts.Cancel();
 
         try { _expiryTask.Wait(2000); } catch { }
         try { _rewriteTask?.Wait(2000); } catch { }
+        try { _flushTask.Wait(2000); } catch { }
 
         lock (_aofLock)
         {
-            _aofWriter?.Dispose();
-            _aofWriter = null;
+            if (_aofWriter != null)
+            {
+                _aofWriter.Flush();
+                _aofWriter.Dispose();
+                _aofWriter = null;
+            }
         }
     }
 

@@ -1,10 +1,10 @@
-﻿namespace DevCache.Service;
+﻿namespace DevCache.Server;
 
 public class Worker(ILogger<Worker> logger, IConfiguration configuration) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var server = new DevCacheServer(configuration, logger);
+        var server = new Server(configuration, logger);
 
         try
         {
