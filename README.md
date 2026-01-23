@@ -1,5 +1,7 @@
 # DevCache
 
+<img width="256" height="256" alt="Square44x44Logo altform-unplated_targetsize-256" src="https://github.com/user-attachments/assets/753eb77a-e251-4e35-abcf-a1ab268a6b6e" />
+
 DevCache is a lightweight, Redis-inspired in-memory data store built for **learning, experimentation, and developer-focused caching**. It implements a subset of Redis semantics with a strong emphasis on **correct behavior, clean architecture, and protocol compatibility**.
 
 This project is intentionally designed to explore *how Redis works internally* — not just at the command level, but across networking, persistence, expiry, and tooling.
