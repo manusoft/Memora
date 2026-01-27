@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/src/">
     <Project Path="src/DevCache.Cli/DevCache.Cli.csproj" Id="4a4c5e71-74fe-48f7-9bbe-d02979351b09" />
+    <Project Path="src/DevCache.Client/DevCache.Client.csproj" Id="7f3f0481-0570-4e68-9ff7-fca096066bf2" />
     <Project Path="src/DevCache.Common/DevCache.Common.csproj" />
     <Project Path="src/DevCache.Core/DevCache.Core.csproj" />
     <Project Path="src/DevCache.Server/DevCache.Server.csproj" />
