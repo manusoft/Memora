@@ -16,26 +16,29 @@ public sealed class Server : IDisposable
     private readonly InMemoryStore _store = new();
     private readonly DateTime _startedAt = DateTime.UtcNow;
 
-    public string Bind { get; }
-    public int Port { get; }
+    private string bind { get; }
+    private int port { get; }
+
+    public string? requirePass;
 
     public Server(IConfiguration config, ILogger logger)
     {
         _config = config;
         _logger =logger;       
 
-        Bind = _config["DevCache:BindAddress"] ?? "127.0.0.1";
-        Port = _config.GetValue<int>("DevCache:Port", 6380);
+        bind = _config["DevCache:BindAddress"] ?? "127.0.0.1";
+        port = _config.GetValue<int>("DevCache:Port", 6380);
+        requirePass = config["DevCache:RequirePass"];
 
-        CommandRegistry.Initialize(_store, GetRuntimeInfo());
+        CommandRegistry.Initialize(_store, GetRuntimeInfo(), requirePass);
     }
 
     public async Task StartAsync(CancellationToken token)
     {
-        _listener = new TcpListener(IPAddress.Parse(Bind), Port);
+        _listener = new TcpListener(IPAddress.Parse(bind), port);
         _listener.Start();
 
-        _logger.LogInformation($"DevCache listening on {Bind}:{Port}");
+        _logger.LogInformation($"DevCache listening on {bind}:{port}");
 
         while (!token.IsCancellationRequested)
         {
@@ -47,7 +50,7 @@ public sealed class Server : IDisposable
     public ServerRuntimeInfo GetRuntimeInfo()
     {
         return new ServerRuntimeInfo(
-            Port: Port,
+            Port: port,
             StartedAt: _startedAt,
             ConfigFile: null, //_config["DevCache:ConfigFile"], // if you have such setting
             MaxMemoryBytes: 0 // or read from config later
@@ -94,7 +97,7 @@ public sealed class Server : IDisposable
                     continue;
                 }
 
-                var commandName = (cmdResp.Value as string)?.ToUpperInvariant();
+                var commandName = (cmdResp.Value as string)?.ToUpperInvariant() ?? "";
                 if (string.IsNullOrWhiteSpace(commandName))
                 {
                     await writer.WriteAsync(
@@ -107,6 +110,10 @@ public sealed class Server : IDisposable
                 _logger.LogInformation("Command: {Command}", commandName);
 
                 CommandRegistry.Store.IncrementCommandsProcessed();
+
+                // ────────────────────────────────────────────────
+                // Proceed with normal execution
+                // ────────────────────────────────────────────────
 
                 var args = new List<string>(items.Count - 1);
 
@@ -132,6 +139,9 @@ public sealed class Server : IDisposable
                     continue;
                 }
 
+                // ────────────────────────────────────────────────
+                // Create context
+                // ────────────────────────────────────────────────
                 var context = new CommandContext
                 {
                     Client = client,
@@ -139,6 +149,27 @@ public sealed class Server : IDisposable
                     Writer = writer
                 };
 
+                // ────────────────────────────────────────────────
+                // Check authentication
+                // ────────────────────────────────────────────────
+
+                bool requiresAuth = commandName switch
+                {
+                    "AUTH" or "PING" or "QUIT" or "ECHO" or "INFO" or "ROLE" or "CLIENT" => false,
+                    _ => true
+                };
+
+                if (requiresAuth && !context.IsAuthenticated && CommandRegistry.RequirePass != null)
+                {
+                    await writer.WriteAsync(
+                        RespValue.Error("NOAUTH Authentication required."),
+                        token);
+                    continue;
+                }
+
+                // ────────────────────────────────────────────────
+                // Execute command
+                // ────────────────────────────────────────────────
                 try
                 {
                     await commandHandler(context, args);
