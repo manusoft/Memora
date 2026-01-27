@@ -137,7 +137,7 @@ public sealed class AofPersistence : IDisposable
                 string value = Encoding.UTF8.GetString(valueBytes);
                 commandArgs.Add(value);
 
-                ReadExactBytes(2); // CRLF
+                ReadExactBytes(2); // CRLF  
             }
 
             if (!valid || commandArgs.Count != argCount) continue;
@@ -148,11 +148,12 @@ public sealed class AofPersistence : IDisposable
             {
                 switch (cmd)
                 {
+                    // 🔹 FIXED: Actually clear memory on FLUSH commands
                     case "FLUSHDB":
                     case "FLUSHALL":
-                        _store.FlushDb(persist: false);
+                        _store.FlushDb(persist: false); // actually clear memory
                         loaded++;
-                        break;  // just count as loaded, do NOT clear anything
+                        break;  
 
                     case "SET" when commandArgs.Count == 3:
                         _store.Set(commandArgs[1], commandArgs[2], persist: false);
@@ -200,7 +201,7 @@ public sealed class AofPersistence : IDisposable
                         loaded++;
                         break;
 
-                    case "HSET" when commandArgs.Count >= 4 && (commandArgs.Count - 1) % 2 == 0:
+                    case "HSET" when commandArgs.Count >= 4 && (commandArgs.Count - 2) % 2 == 0:
                         string key = commandArgs[1];
 
                         for (int j = 2; j < commandArgs.Count; j += 2)
@@ -244,6 +245,8 @@ public sealed class AofPersistence : IDisposable
             foreach (var arg in args)
                 WriteBulk(_aofWriter, arg);
 
+            // 🔹 FIXED: flush immediately to ensure CLI commands are persisted
+            _aofWriter.Flush();
             _needsFlush = true;
         }
     }
@@ -331,13 +334,38 @@ public sealed class AofPersistence : IDisposable
                         break;
 
                     case ListEntry lst:
+                        // original code
+                        //if (lst.Values.Count > 0)
+                        //{
+                        //    await WriteRespArrayAsync(tempWriter, "RPUSH", [kvp.Key, .. lst.Values]);
+                        //}
+
+                        // replaced ====>
                         if (lst.Values.Count > 0)
                         {
-                            await WriteRespArrayAsync(tempWriter, "RPUSH", [kvp.Key, .. lst.Values]);
+                            var items = new string[lst.Values.Count + 1];
+                            items[0] = kvp.Key;
+                            lst.Values.CopyTo(items, 1);  // preserves order
+                            await WriteRespArrayAsync(tempWriter, "RPUSH", items);
                         }
+                        // <=======
                         break;
 
                     case HashEntry hsh:
+                        // original code 
+                        //if (hsh.Fields.Count > 0)
+                        //{
+                        //    var flat = new List<string> { kvp.Key };
+                        //    foreach (var f in hsh.Fields)
+                        //    {
+                        //        flat.Add(f.Key);
+                        //        flat.Add(f.Value);
+                        //    }
+                        //    await WriteRespArrayAsync(tempWriter, "HMSET", flat.ToArray());
+                        //}
+                        
+
+                        // replaced ===>
                         if (hsh.Fields.Count > 0)
                         {
                             var flat = new List<string> { kvp.Key };
@@ -346,8 +374,9 @@ public sealed class AofPersistence : IDisposable
                                 flat.Add(f.Key);
                                 flat.Add(f.Value);
                             }
-                            await WriteRespArrayAsync(tempWriter, "HMSET", flat.ToArray());
+                            await WriteRespArrayAsync(tempWriter, "HSET", flat.ToArray());
                         }
+                        //<====
                         break;
                 }
 

@@ -33,7 +33,9 @@ public static class CommandRegistry
             ["INFO"] = InfoAsync,
             ["PING"] = PingAsync,
             ["ROLE"] = RoleAsync,            
-            ["QUIT"] = QuitAsync,            
+            ["QUIT"] = QuitAsync,
+            ["MEMORY"] = MemoryAsync,
+
 
             // KV (Strings)
             ["SET"] = SetAsync,
@@ -77,6 +79,7 @@ public static class CommandRegistry
             ["HKEYS"] = HKeysAsync,
             ["HVALS"] = HValsAsync,
             ["HSCAN"] = HScanAsync,
+            ["HEXISTS"] = HExistsAsync,
             ["HGETALL"] = HGetAllAsync,
 
         };
@@ -340,6 +343,27 @@ public static class CommandRegistry
         await ctx.Writer.WriteAsync(RespValue.SimpleString("OK"));
         // The connection will close naturally after this reply because we break the loop on client side
     }
+
+    private static async Task MemoryAsync(CommandContext ctx, IReadOnlyList<string> args)
+    {
+        if (args.Count != 2 || !args[0].Equals("USAGE", StringComparison.OrdinalIgnoreCase))
+        {
+            await Error(ctx, "ERR syntax error");
+            return;
+        }
+
+        var entry = Store.GetEntry(args[1]);
+        if (entry == null)
+        {
+            await ctx.Writer.WriteAsync(RespValue.NullBulk);
+            return;
+        }
+
+        await ctx.Writer.WriteAsync(
+            RespValue.Integer(entry.EstimatedSizeBytes)
+        );
+    }
+
 
     // ---------------- KV (Strings) ----------------
     private static async Task SetAsync(CommandContext ctx, IReadOnlyList<string> args)
@@ -1043,19 +1067,17 @@ public static class CommandRegistry
         string? matchPattern = null;
         int countHint = 10; // default ~10 fields per iteration
 
-        // Parse optional MATCH and COUNT
-        for (int i = 2; i < args.Count; i += 2)
+        for (int i = 2; i < args.Count; i++)
         {
             string opt = args[i].ToUpperInvariant();
 
             if (opt == "MATCH" && i + 1 < args.Count)
             {
-                matchPattern = args[i + 1];
-                i++; // skip value
+                matchPattern = args[++i];
             }
             else if (opt == "COUNT" && i + 1 < args.Count)
             {
-                if (!int.TryParse(args[i + 1], out int cnt) || cnt <= 0)
+                if (!int.TryParse(args[++i], out int cnt) || cnt <= 0)
                 {
                     await Error(ctx, "ERR invalid COUNT value");
                     return;
@@ -1064,7 +1086,7 @@ public static class CommandRegistry
             }
             else
             {
-                await Error(ctx, $"ERR syntax error near '{opt}'");
+                await Error(ctx, $"ERR syntax error near '{args[i]}'");
                 return;
             }
         }
@@ -1115,6 +1137,27 @@ public static class CommandRegistry
 
         await ReplyWithCursorAndFields(ctx, nextCursor, resultFields);
     }
+
+    private static async Task HExistsAsync(CommandContext ctx, IReadOnlyList<string> args)
+    {
+        if (args.Count != 2)
+        {
+            await Error(ctx, "ERR wrong number of arguments for 'hexists' command");
+            return;
+        }
+
+        var entry = Store.GetEntry(args[0]) as HashEntry;
+        if (entry == null)
+        {
+            await ctx.Writer.WriteAsync(RespValue.Integer(0));
+            return;
+        }
+
+        await ctx.Writer.WriteAsync(
+            RespValue.Integer(entry.Fields.ContainsKey(args[1]) ? 1 : 0)
+        );
+    }
+
 
     private static async Task HValsAsync(CommandContext ctx, IReadOnlyList<string> args)
     {
