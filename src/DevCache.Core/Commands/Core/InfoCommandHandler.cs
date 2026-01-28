@@ -2,7 +2,7 @@
 using DevCache.Core.Storage;
 using System.Text;
 
-namespace DevCache.Core.Commands;
+namespace DevCache.Core.Commands.Core;
 
 public class InfoCommandHandler
 {

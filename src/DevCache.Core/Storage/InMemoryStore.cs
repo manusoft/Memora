@@ -33,7 +33,8 @@ public sealed partial class InMemoryStore : IDisposable
     private long _opsPerSecSnapshot;
     private DateTime _lastOpsSnapshot = DateTime.UtcNow;
 
-    public long KeyCount => _data.Count;
+    public long KeyCount => _data
+        .Count(kvp => kvp.Value.ExpiryUtc == null || kvp.Value.ExpiryUtc > DateTimeOffset.UtcNow);
 
     private readonly AofPersistence _aof;
 

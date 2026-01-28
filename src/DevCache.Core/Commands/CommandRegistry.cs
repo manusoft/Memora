@@ -1,137 +1,147 @@
 ﻿using DevCache.Common;
+using DevCache.Core.Commands.Core;
+using DevCache.Core.Commands.Strings;
 using DevCache.Core.Helpers;
 using DevCache.Core.Models;
 using DevCache.Core.Storage;
-using System.Net;
 
 namespace DevCache.Core.Commands;
 
 public static class CommandRegistry
 {
-    private static readonly Dictionary<string, RedisCommand> _commands;
-    private static InMemoryStore? _store;
-    private static ServerRuntimeInfo? _runtimeInfo;
-    private static string? _requirePass;
+    private static readonly Dictionary<string, RedisCommand> _commands = new(StringComparer.OrdinalIgnoreCase);
+    public static InMemoryStore Store { get; private set; } = null!;
+    public static string? RequirePass { get; private set; }
 
-    public static InMemoryStore Store => _store
-        ?? throw new InvalidOperationException("Store not initialized");
+    private static ServerRuntimeInfo? _runtimeInfo;    
+
+    //public static InMemoryStore Store => _store
+    //    ?? throw new InvalidOperationException("Store not initialized");
 
     public static bool TryGet(string name, out RedisCommand command)
         => _commands.TryGetValue(name, out command!);
-        
-    public static string? RequirePass => _requirePass;
+
+    //public static string? RequirePass => _requirePass;
 
     static CommandRegistry()
     {
-        _commands = new(StringComparer.OrdinalIgnoreCase)
-        {
-            // Core
-            ["AUTH"] = AuthAsync,
-            ["CONFIG"] = ConfigAsync,
-            ["CLIENT"] = ClientAsync,           
-            ["ECHO"] = EchoAsync,
-            ["INFO"] = InfoAsync,
-            ["PING"] = PingAsync,
-            ["ROLE"] = RoleAsync,            
-            ["QUIT"] = QuitAsync,
-            ["MEMORY"] = MemoryAsync,
+        //_commands = new(StringComparer.OrdinalIgnoreCase)
+        //{
+
+        _commands["CONFIG"] = ConfigAsync;
+        _commands["CLIENT"] = ClientAsync;
+        _commands["ECHO"] = EchoAsync;
+        _commands["INFO"] = InfoAsync;
+        _commands["PING"] = PingAsync;
+        _commands["ROLE"] = RoleAsync;
+        _commands["QUIT"] = QuitAsync;
+        _commands["MEMORY"] = MemoryAsync;
 
 
-            // KV (Strings)
-            ["SET"] = SetAsync,
-            ["GET"] = GetAsync,
-            ["DEL"] = DelAsync,
-            ["EXISTS"] = ExistsAsync,
-            ["INCR"] = IncrAsync,
-            ["DECR"] = DecrAsync,
-            ["INCRBY"] = IncrByAsync,
-            ["SCAN"] = ScanAsync,
-            ["GETRANGE"] = GetRangeAsync,
-            ["STRLEN"] = StrLenAsync,
+        // KV (Strings)
+       
+        _commands["GET"] = GetAsync;
+        _commands["DEL"] = DelAsync;
+        _commands["EXISTS"] = ExistsAsync;
+        _commands["INCR"] = IncrAsync;
+        _commands["DECR"] = DecrAsync;
+        _commands["INCRBY"] = IncrByAsync;
+        _commands["SCAN"] = ScanAsync;
+        _commands["GETRANGE"] = GetRangeAsync;
+        _commands["STRLEN"] = StrLenAsync;
+        _commands["MGET"] = MGetAsync;
+        _commands["DBSIZE"] = DbSizeAsync;
 
-            // TTL
-            ["EXPIRE"] = ExpireAsync,
-            ["TTL"] = TtlAsync,
-            ["PEXPIRE"] = PExpireAsync,
-            ["PTTL"] = PTtlAsync,
+        // TTL
+        _commands["EXPIRE"] = ExpireAsync;
+        _commands["TTL"] = TtlAsync;
+        _commands["PEXPIRE"] = PExpireAsync;
+        _commands["PTTL"] = PTtlAsync;
 
-            // DB
-            ["FLUSHDB"] = FlushDbAsync,
-            ["FLUSHALL"] = FlushAllAsync,
+        // DB
+        _commands["FLUSHDB"] = FlushDbAsync;
+        _commands["FLUSHALL"] = FlushAllAsync;
 
-            // UI / Introspection
-            ["KEYS"] = KeysAsync,
-            ["TYPE"] = TypeAsync,
-            ["GETMETA"] = GetMetaAsync,
+        // UI / Introspection
+        _commands["KEYS"] = KeysAsync;
+        _commands["TYPE"] = TypeAsync;
+        _commands["GETMETA"] = GetMetaAsync;
 
-            // Lists
-            ["LPUSH"] = LPushAsync,
-            ["RPUSH"] = RPushAsync,
-            ["LPOP"] = LPopAsync,
-            ["RPOP"] = RPopAsync,
-            ["LPUSHX"] = LPushXAsync,
-            ["RPUSHX"] = RPushXAsync,
-            ["LLEN"] = LLenAsync,
-            ["LRANGE"] = LRangeAsync,
+        // Lists
+        _commands["LPUSH"] = LPushAsync;
+        _commands["RPUSH"] = RPushAsync;
+        _commands["LPOP"] = LPopAsync;
+        _commands["RPOP"] = RPopAsync;
+        _commands["LPUSHX"] = LPushXAsync;
+        _commands["RPUSHX"] = RPushXAsync;
+        _commands["LLEN"] = LLenAsync;
+        _commands["LRANGE"] = LRangeAsync;
 
-            // Hashes
-            ["HSET"] = HSetAsync,
-            ["HGET"] = HGetAsync,
-            ["HDEL"] = HDelAsync,
-            ["HLEN"] = HLenAsync,
-            ["HKEYS"] = HKeysAsync,
-            ["HVALS"] = HValsAsync,
-            ["HSCAN"] = HScanAsync,
-            ["HEXISTS"] = HExistsAsync,
-            ["HGETALL"] = HGetAllAsync,
+        // Hashes
+        _commands["HSET"] = HSetAsync;
+        _commands["HGET"] = HGetAsync;
+        _commands["HDEL"] = HDelAsync;
+        _commands["HLEN"] = HLenAsync;
+        _commands["HKEYS"] = HKeysAsync;
+        _commands["HVALS"] = HValsAsync;
+        _commands["HSCAN"] = HScanAsync;
+        _commands["HEXISTS"] = HExistsAsync;
+        _commands["HGETALL"] = HGetAllAsync;
 
-        };
+        //};
     }
 
     public static void Initialize(InMemoryStore store, ServerRuntimeInfo runtimeInfo, string? requirePass = null)
     {
-        if (_store != null) throw new InvalidOperationException("Already initialized");
-        _store = store;
+        if (Store != null) throw new InvalidOperationException("Already initialized");
+        Store = store;
         _runtimeInfo = runtimeInfo;
 
         // Normalize: treat empty/whitespace as "no password"
-        _requirePass = string.IsNullOrWhiteSpace(requirePass) ? null : requirePass;       
+        RequirePass = string.IsNullOrWhiteSpace(requirePass) ? null : requirePass;
+
+        // Core
+        _commands["AUTH"] = AuthCommand.Execute;
+
+        // Strings
+        _commands["SET"] = SetCommand.Execute;
+
     }
 
     // ---------------- Core ----------------
 
-    private static async Task AuthAsync(CommandContext ctx, IReadOnlyList<string> args)
-    {
-        if (args.Count != 1)
-        {
-            await ctx.Writer.WriteAsync(
-                RespValue.Error("ERR wrong number of arguments for 'auth' command"));
-            return;
-        }
+    //private static async Task AuthAsync(CommandContext ctx, IReadOnlyList<string> args)
+    //{
+    //    if (args.Count != 1)
+    //    {
+    //        await ctx.Writer.WriteAsync(
+    //            RespValue.Error("ERR wrong number of arguments for 'auth' command"));
+    //        return;
+    //    }
 
-        string provided = args[0];
+    //    string provided = args[0];
 
-        // If no password is required → always accept
-        if (RequirePass == null || string.IsNullOrEmpty(RequirePass))
-        {
-            ctx.IsAuthenticated = true;
-            await ctx.Writer.WriteAsync(RespValue.SimpleString("OK"));
-            return;
-        }
+    //    // If no password is required → always accept
+    //    if (RequirePass == null || string.IsNullOrEmpty(RequirePass))
+    //    {
+    //        ctx.IsAuthenticated = true;
+    //        await ctx.Writer.WriteAsync(RespValue.SimpleString("OK"));
+    //        return;
+    //    }
 
-        // Real check (simple string comparison is fine for now)
-        if (provided == RequirePass)
-        {
-            ctx.IsAuthenticated = true;
-            await ctx.Writer.WriteAsync(RespValue.SimpleString("OK"));
-        }
-        else
-        {
-            ctx.IsAuthenticated = false;
-            await ctx.Writer.WriteAsync(
-                RespValue.Error("ERR invalid password"));
-        }
-    }
+    //    // Real check (simple string comparison is fine for now)
+    //    if (provided == RequirePass)
+    //    {
+    //        ctx.IsAuthenticated = true;
+    //        await ctx.Writer.WriteAsync(RespValue.SimpleString("OK"));
+    //    }
+    //    else
+    //    {
+    //        ctx.IsAuthenticated = false;
+    //        await ctx.Writer.WriteAsync(
+    //            RespValue.Error("ERR invalid password"));
+    //    }
+    //}
 
     private static async Task ClientAsync(CommandContext ctx, IReadOnlyList<string> args)
     {
@@ -334,7 +344,7 @@ public static class CommandRegistry
 
         await ctx.Writer.WriteAsync(RespValue.Array(reply.AsReadOnly()));
     }
-    
+
     private static async Task QuitAsync(CommandContext ctx, IReadOnlyList<string> args)
     {
         if (args.Count > 0)
@@ -369,94 +379,94 @@ public static class CommandRegistry
 
 
     // ---------------- KV (Strings) ----------------
-    private static async Task SetAsync(CommandContext ctx, IReadOnlyList<string> args)
-    {
-        // Require key + value (value can be empty)
-        if (args.Count < 2)
-        {
-            await Error(ctx, "ERR wrong number of arguments for 'set' command");
-            return;
-        }
+    //private static async Task SetAsync(CommandContext ctx, IReadOnlyList<string> args)
+    //{
+    //    // Require key + value (value can be empty)
+    //    if (args.Count < 2)
+    //    {
+    //        await Error(ctx, "ERR wrong number of arguments for 'set' command");
+    //        return;
+    //    }
 
-        string key = args[0];
-        string value = args[1];  // value can be ""
+    //    string key = args[0];
+    //    string value = args[1];  // value can be ""
 
-        bool? nx = null;
-        long? expireMs = null;
+    //    bool? nx = null;
+    //    long? expireMs = null;
 
-        // Start option parsing AFTER value (index 2+)
-        int i = 2;
+    //    // Start option parsing AFTER value (index 2+)
+    //    int i = 2;
 
-        while (i < args.Count)
-        {
-            string opt = args[i].ToUpperInvariant();
+    //    while (i < args.Count)
+    //    {
+    //        string opt = args[i].ToUpperInvariant();
 
-            if (string.IsNullOrEmpty(opt))
-            {
-                i++;
-                continue;  // ignore empty args from CLI
-            }
+    //        if (string.IsNullOrEmpty(opt))
+    //        {
+    //            i++;
+    //            continue;  // ignore empty args from CLI
+    //        }
 
-            if (opt == "EX")
-            {
-                if (i + 1 >= args.Count || !int.TryParse(args[i + 1], out int sec) || sec <= 0)
-                {
-                    await Error(ctx, "ERR value is not an integer or out of range");
-                    return;
-                }
-                expireMs = sec * 1000L;
-                i += 2;
-            }
-            else if (opt == "PX")
-            {
-                if (i + 1 >= args.Count || !long.TryParse(args[i + 1], out long ms) || ms <= 0)
-                {
-                    await Error(ctx, "ERR value is not an integer or out of range");
-                    return;
-                }
-                expireMs = ms;
-                i += 2;
-            }
-            else if (opt == "NX")
-            {
-                nx = true;
-                i++;
-            }
-            else if (opt == "XX")
-            {
-                nx = false;
-                i++;
-            }
-            else
-            {
-                await Error(ctx, $"ERR syntax error near '{opt}'");
-                return;
-            }
-        }
+    //        if (opt == "EX")
+    //        {
+    //            if (i + 1 >= args.Count || !int.TryParse(args[i + 1], out int sec) || sec <= 0)
+    //            {
+    //                await Error(ctx, "ERR value is not an integer or out of range");
+    //                return;
+    //            }
+    //            expireMs = sec * 1000L;
+    //            i += 2;
+    //        }
+    //        else if (opt == "PX")
+    //        {
+    //            if (i + 1 >= args.Count || !long.TryParse(args[i + 1], out long ms) || ms <= 0)
+    //            {
+    //                await Error(ctx, "ERR value is not an integer or out of range");
+    //                return;
+    //            }
+    //            expireMs = ms;
+    //            i += 2;
+    //        }
+    //        else if (opt == "NX")
+    //        {
+    //            nx = true;
+    //            i++;
+    //        }
+    //        else if (opt == "XX")
+    //        {
+    //            nx = false;
+    //            i++;
+    //        }
+    //        else
+    //        {
+    //            await Error(ctx, $"ERR syntax error near '{opt}'");
+    //            return;
+    //        }
+    //    }
 
-        bool keyExists = Store.Exists(key);
+    //    bool keyExists = Store.Exists(key);
 
-        if (nx == true && keyExists)
-        {
-            await ctx.Writer.WriteAsync(RespValue.NullBulk);
-            return;
-        }
+    //    if (nx == true && keyExists)
+    //    {
+    //        await ctx.Writer.WriteAsync(RespValue.NullBulk);
+    //        return;
+    //    }
 
-        if (nx == false && !keyExists)
-        {
-            await ctx.Writer.WriteAsync(RespValue.NullBulk);
-            return;
-        }
+    //    if (nx == false && !keyExists)
+    //    {
+    //        await ctx.Writer.WriteAsync(RespValue.NullBulk);
+    //        return;
+    //    }
 
-        Store.Set(key, value, persist: true);
+    //    Store.Set(key, value, persist: true);
 
-        if (expireMs.HasValue)
-        {
-            Store.Expire(key, expireMs.Value, persist: true);
-        }
+    //    if (expireMs.HasValue)
+    //    {
+    //        Store.Expire(key, expireMs.Value, persist: true);
+    //    }
 
-        await ctx.Writer.WriteAsync(RespValue.SimpleString("OK"));
-    }
+    //    await ctx.Writer.WriteAsync(RespValue.SimpleString("OK"));
+    //}
 
     private static async Task GetAsync(CommandContext ctx, IReadOnlyList<string> args)
     {
@@ -721,6 +731,48 @@ public static class CommandRegistry
 
         await ctx.Writer.WriteAsync(RespValue.Integer(length));
     }
+
+    private static async Task MGetAsync(CommandContext ctx, IReadOnlyList<string> args)
+    {
+        if (args.Count < 1)
+        {
+            await Error(ctx, "ERR wrong number of arguments for 'mget' command");
+            return;
+        }
+
+        var result = new List<RespValue>();
+
+        foreach (string key in args)
+        {
+            var entry = Store.GetEntry(key);
+            if (entry is StringEntry strEntry)
+            {
+                result.Add(RespValue.BulkString(strEntry.Value));
+            }
+            else
+            {
+                // Key missing, expired, or wrong type → null
+                result.Add(RespValue.NullBulk);
+            }
+        }
+
+        await ctx.Writer.WriteAsync(RespValue.Array(result.AsReadOnly()));
+    }
+
+    private static async Task DbSizeAsync(CommandContext ctx, IReadOnlyList<string> args)
+    {
+        if (args.Count != 0)
+        {
+            await Error(ctx, "ERR wrong number of arguments for 'dbsize' command");
+            return;
+        }
+
+        // Use your existing KeyCount property (non-expired keys)
+        long keyCount = Store.KeyCount;
+
+        await ctx.Writer.WriteAsync(RespValue.Integer(keyCount));
+    }
+
 
     // ---------------- TTL ----------------
     private static async Task ExpireAsync(CommandContext ctx, IReadOnlyList<string> args)
@@ -1289,7 +1341,7 @@ public static class CommandRegistry
     private static Task Ok(CommandContext ctx)
         => ctx.Writer.WriteAsync(RespValue.SimpleString("OK"));
 
-    private static Task Error(CommandContext ctx, string message)
+    public static Task Error(CommandContext ctx, string message)
         => ctx.Writer.WriteAsync(RespValue.Error(message));
 
     private static async Task ReplyWithCursorAndKeys(CommandContext ctx, ulong cursor, List<RespValue> keys)
