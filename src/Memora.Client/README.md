@@ -3,6 +3,8 @@
 [![NuGet](https://img.shields.io/nuget/v/Memora.Client.svg)](https://www.nuget.org/packages/Memora.Client/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
+<img width="512" height="512" alt="Memora Icon" src="https://github.com/user-attachments/assets/a4153c53-05f0-4458-9906-f7dfb18d959d" />
+
 Memora is a **high-performance, Redis-inspired in-memory cache** for .NET. It provides key/value storage, lists, hashes, TTL, and DB commands, with a **.NET client** ready for integration in ASP.NET Core, console apps, or background services.
 
 ---
