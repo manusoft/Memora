@@ -159,13 +159,26 @@ Memora exists to answer one question:
 
 > *How does Redis actually work under the hood?*
 
-This project explores protocol handling, concurrency, expiry, persistence, and tooling — without hiding complexity behind libraries.
+On **Microsoft Windows**, setting up Redis for development often requires **Docker** or **WSL**.
+
+### Memora provides a simpler approach:
+- Download release
+- Run memora-server.exe
+- Start developing immediately
+
+> No containers or external services required.
+
+### Memora is ideal for:
+- Local development
+- Integration testing
+- Prototyping
+- Lightweight production usage
 
 ---
 
 ## ⚠️ Disclaimer
 
-Memora is **not intended as a Redis replacement**. It is a learning-focused project and a demonstration of systems design principles. It implements a compatible wire protocol for development purposes.
+Memora **is not intended to fully replace Redis** for high-scale production. It implements a compatible wire protocol for development purposes.
 
 ---
 
