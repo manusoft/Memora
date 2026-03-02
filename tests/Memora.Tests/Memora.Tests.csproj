@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
-	<RootNamespace>DevCache.Tests</RootNamespace>
+	<RootNamespace>ManuHub.Memora</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

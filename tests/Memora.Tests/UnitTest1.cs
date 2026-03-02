@@ -1,4 +1,4 @@
-﻿namespace DevCache.Tests;
+﻿namespace ManuHub.Memora;
 
 public class UnitTest1
 {
