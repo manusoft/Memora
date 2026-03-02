@@ -1,6 +1,6 @@
 # Memora
 
-<img width="256" height="256" alt="Square44x44Logo altform-unplated_targetsize-256" src="https://github.com/user-attachments/assets/753eb77a-e251-4e35-abcf-a1ab268a6b6e" />
+<img width="512" height="512" alt="Design a product lan (Custom)" src="https://github.com/user-attachments/assets/0ae7f4b4-c6b0-41b9-8bcf-2111e7aaa478" />
 
 Memora is a lightweight, Redis-inspired in-memory data store built for **learning, experimentation, and developer-focused caching**. It implements a subset of Redis semantics with a strong emphasis on **correct behavior, clean architecture, and protocol compatibility**.
 
