@@ -1,0 +1,11 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+	<LangVersion>latest</LangVersion>
+    <AssemblyName>memora-common</AssemblyName>
+    <RootNamespace>ManuHub.Memora.Common</RootNamespace>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>

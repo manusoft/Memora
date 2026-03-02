@@ -44,7 +44,7 @@ This project is intentionally designed to explore *how Redis works internally* �
 
 ```
 ┌────────────┐     RESP      ┌──────────────┐
-│  DevCache  │◀────────────▶│   CLI        │
+│  Memora  │◀────────────▶│   CLI        │
 │  Server    │               └──────────────┘
 │            │
 │  ┌──────┐  │               ┌──────────────┐
@@ -117,19 +117,19 @@ This provides durability while keeping the implementation approachable.
 ### Run the server
 
 ```bash
-dotnet run --project DevCache.Server
+dotnet run --project Memora.Server
 ```
 
 ### Use the CLI
 
 ```bash
-dotnet run --project DevCache.Cli
+dotnet run --project Memora.Cli
 ```
 
 Or execute a single command:
 
 ```bash
-dotnet run --project DevCache.Cli SET foo bar
+dotnet run --project Memora.Cli SET foo bar
 ```
 
 ---
