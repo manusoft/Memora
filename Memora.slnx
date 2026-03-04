@@ -1,4 +1,8 @@
 <Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x86" />
+  </Configurations>
   <Folder Name="/src/">
     <Project Path="src/Memora.Cli/Memora.Cli.csproj" Id="4a4c5e71-74fe-48f7-9bbe-d02979351b09" />
     <Project Path="src/Memora.Client/Memora.Client.csproj" Id="7f3f0481-0570-4e68-9ff7-fca096066bf2" />
