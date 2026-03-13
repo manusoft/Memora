@@ -3,7 +3,6 @@
 ![Static Badge](https://img.shields.io/badge/ManuHub.Memora.Client-red)
 ![NuGet Version](https://img.shields.io/nuget/v/ManuHub.Memora.Client)
 ![NuGet Downloads](https://img.shields.io/nuget/dt/ManuHub.Memora.Client)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE.txt)
 
 **Memora.Client** is a .NET library for interacting with a running **Memora server**. It provides a high-level API wrapper over the Memora protocol so you can use strongly-typed commands, handle responses cleanly, and integrate Memora into your applications with minimal boilerplate.
 
@@ -25,9 +24,10 @@ Memora runs as a **local executable**:
 ```
 
 So developers only need to:
-1. Download the release
-2. Run the server
-3. Use the client or CLI
+1. Download the server  
+    >  [Windows](https://github.com/manusoft/Memora/releases/download/v1.0.0/memora-win-x64.zip) |  [Linux](https://github.com/manusoft/Memora/releases/download/v1.0.0/memora-linux-x64.zip)
+2. Install / Run the server
+3. Use the **Client** or **CLI** (memora-cli) - inside the bundle / zip
 
 No Docker, WSL, or external infrastructure is required.
 
