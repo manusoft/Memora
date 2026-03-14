@@ -27,7 +27,7 @@ jobs:
 
       # 4️⃣ Pack the project
       - name: Pack NuGet package
-        run: dotnet pack src/Memora.Client.csproj -c Release --output ./nupkg
+        run: dotnet pack src/Memora.Client/Memora.Client.csproj -c Release --output ./nupkg
 
       # 5️⃣ Publish to GitHub Packages
       - name: Publish to GitHub Packages
